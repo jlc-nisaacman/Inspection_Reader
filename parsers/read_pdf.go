@@ -9,8 +9,16 @@ import (
 	"github.com/pdfcpu/pdfcpu/pkg/api"
 )
 
+// ReadPDF opens a PDF file, extracts form field data, and identifies the form type.
+//
+// Parameters:
+//   - pdfPath: File path to the PDF to be processed
+//
+// Returns:
+//   - formType: Identified type of form (e.g., "Inspection Form", "Backflow Form")
+//   - report: Map of form field names to their values, or nil if extraction failed
 func ReadPDF(pdfPath string) (formType string, report map[string]string) {
-	// utils.LogSafe("Opening PDF: %s\n", pdfPath)
+	// Open the PDF file
 	file, err := os.Open(pdfPath)
 	if err != nil {
 		utils.LogSafe(" |%s| Could not open PDF: %v", pdfPath, err)
@@ -18,6 +26,7 @@ func ReadPDF(pdfPath string) (formType string, report map[string]string) {
 	}
 	defer file.Close()
 
+	// Configure and export PDF form fields using pdfcpu
 	config := api.LoadConfiguration()
 	data, err := api.ExportForm(file, "", config)
 	if err != nil {
@@ -25,6 +34,8 @@ func ReadPDF(pdfPath string) (formType string, report map[string]string) {
 		return "", nil
 	}
 
+	// Map of form identifiers - keys are form types, values are field names that typically appear in that form type
+	// Used to determine what kind of form we're processing based on presence of specific fields
 	formIdentifiers := map[string][]string{
 		"Backflow Form":     {"bf type", "bf make", "bf model", "bf size", "bf sn"},
 		"Backflow Form Alt": {"group11", "dropdown12", "text7", "dropdown13", "text14"},
@@ -33,24 +44,32 @@ func ReadPDF(pdfPath string) (formType string, report map[string]string) {
 		"Inspection Form":   {"drain test line 1", "insp_freq", "phone", "residual 1", "insp_#"},
 	}
 
+	// Initialize the report map and add the PDF path
 	report = make(map[string]string)
 	report["pdf_path"] = pdfPath
-	extractedFields := make(map[string]bool)
+	extractedFields := make(map[string]bool) // Tracks which fields were found in the PDF
 
+	// Extract all form fields from the PDF
 	for _, form := range data.Forms {
+		// Process text fields
 		for _, text := range form.TextFields {
 			name := strings.TrimSpace(strings.ToLower(text.Name))
+			// Handle multiline text fields by replacing carriage returns with spaces
 			if text.Multiline {
 				text.Value = strings.ReplaceAll(text.Value, "\r", " ")
 			}
 			report[name] = text.Value
 			extractedFields[name] = true
 		}
+
+		// Process radio button groups
 		for _, radio := range form.RadioButtonGroups {
 			name := strings.TrimSpace(strings.ToLower(radio.Name))
 			report[name] = radio.Value
 			extractedFields[name] = true
 		}
+
+		// Process combo boxes (dropdown selections)
 		for _, combo := range form.ComboBoxes {
 			name := strings.TrimSpace(strings.ToLower(combo.Name))
 			report[name] = combo.Value
@@ -58,12 +77,7 @@ func ReadPDF(pdfPath string) (formType string, report map[string]string) {
 		}
 	}
 
-	// Log each entry of the report for debuging purposes
-	// for k, v := range report {
-	// 	utils.LogSafe(" |%s|  %+v | %+v", pdfPath, k, v)
-	// }
-
-	// Determine form type based on unique fields
+	// Determine form type based on the presence of identifying fields
 	formType = "Unknown"
 	for name, identifiers := range formIdentifiers {
 		matchCount := 0
@@ -73,36 +87,50 @@ func ReadPDF(pdfPath string) (formType string, report map[string]string) {
 				matchCount++
 			}
 		}
-		// If a majority of the unique fields are found, identify the form
+		// If a majority of the identifier fields are found, classify the form as this type
 		if matchCount > len(identifiers)/2 {
 			formType = name
 			break
 		}
 	}
+
 	utils.LogSafe(" |%s| Detected Form Type: %s", pdfPath, formType)
 	return formType, report
 }
 
+// MapForm maps a generic report map to a specific form struct using reflection.
+// It uses struct tags to match report keys with struct fields.
+//
+// Type Parameter:
+//   - T: The target struct type to map the report data to
+//
+// Parameters:
+//   - report: Map of field names to values extracted from a PDF
+//
+// Returns:
+//   - An instance of type T populated with values from the report
 func MapForm[T any](report map[string]string) T {
 	var form T
 	formValue := reflect.ValueOf(&form).Elem()
 	formType := formValue.Type()
 
+	// Iterate through each field in the target struct
 	for i := 0; i < formValue.NumField(); i++ {
 		field := formValue.Field(i)
 		if !field.CanSet() {
-			continue
+			continue // Skip fields that can't be set (unexported)
 		}
 
+		// Get the json tag for this field
 		jsonTag := formType.Field(i).Tag.Get("json")
 		if jsonTag == "" {
-			continue
+			continue // Skip fields without json tags
 		}
 
-		// Handle alternative keys (e.g., json:"Remarks,alt=Text4")
+		// Handle alternative keys specified in the json tag
 		keys := []string{}
 
-		// Split by comma to separate the main tag from alt options
+		// Split by comma to separate the main tag from alternatives
 		tagParts := strings.Split(jsonTag, ",")
 
 		// First part is always the main field name
@@ -118,7 +146,7 @@ func MapForm[T any](report map[string]string) T {
 			}
 		}
 
-		// Find the first available key in the report map
+		// Try each possible key until we find a match in the report
 		for _, key := range keys {
 			if value, exists := report[key]; exists {
 				field.SetString(value)

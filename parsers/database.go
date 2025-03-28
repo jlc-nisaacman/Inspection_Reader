@@ -13,50 +13,69 @@ import (
 	_ "github.com/lib/pq"
 )
 
+// ParseDate converts a date string from MM/DD/YY format to a database-friendly YYYY-MM-DD format.
+// Returns nil if the date string cannot be parsed.
+//
+// Parameters:
+//   - dateStr: Date string in MM/DD/YY format
+//
+// Returns:
+//   - Date in YYYY-MM-DD format, or nil if parsing fails
 func ParseDate(dateStr string) any {
-	layout := "01/02/06"
+	layout := "01/02/06" // MM/DD/YY format
 	parsedTime, err := time.Parse(layout, dateStr)
 	if err != nil {
 		return nil
 	}
-	return parsedTime.Format("2006-01-02")
+	return parsedTime.Format("2006-01-02") // Return YYYY-MM-DD format
 }
 
-// Connects to PostgreSQL
+// ConnectDatabase establishes a connection to the PostgreSQL database using
+// credentials from environment variables.
+//
+// Returns:
+//   - A pointer to an sql.DB connection object
 func ConnectDatabase() *sql.DB {
-
-	// Load .env file
+	// Load .env file for database credentials
 	if err := godotenv.Load(); err != nil {
 		log.Fatal("Error loading .env file")
 	}
 
-	// Read environment variables
+	// Read database connection parameters from environment variables
 	username := os.Getenv("DB_USER")
 	password := os.Getenv("DB_PASS")
 	hostname := os.Getenv("DB_HOST")
 	database := os.Getenv("DB_NAME")
 
-	// Connection string
-	connectionString := fmt.Sprintf("postgresql://%s:%s@%s/%s?sslmode=disable", username, password, hostname, database)
+	// Build the PostgreSQL connection string
+	connectionString := fmt.Sprintf("postgresql://%s:%s@%s/%s?sslmode=disable",
+		username, password, hostname, database)
 
-	// Open DB connection
+	// Open a connection to the database
 	db, err := sql.Open("postgres", connectionString)
 	if err != nil {
 		log.Fatal("Failed to open database connection:", err)
 	}
 
-	// Set connection pool settings
-	db.SetMaxOpenConns(10) // Allow up to 10 concurrent connections
-	db.SetMaxIdleConns(5)  // Keep up to 5 idle connections
+	// Configure connection pool settings
+	db.SetMaxOpenConns(10) // Maximum number of concurrent connections
+	db.SetMaxIdleConns(5)  // Maximum number of idle connections to maintain
 
-	// Ensure the database connection is valid
+	// Verify the connection is working
 	if err := db.Ping(); err != nil {
 		log.Fatal("Failed to connect to database:", err)
 	}
 	return db
 }
 
+// CreateInspectionTable creates the inspections table in the database if it doesn't already exist.
+// This table stores data from inspection form PDFs.
+//
+// Parameters:
+//   - db: Database connection
 func CreateInspectionTable(db *sql.DB) {
+	// SQL query to create the inspections table
+	// Note: This creates the table only if it doesn't exist already
 	query := `
 	CREATE TABLE IF NOT EXISTS inspections (
 	id SERIAL PRIMARY KEY,
