@@ -88,27 +88,41 @@ func MapForm[T any](report map[string]string) T {
 	formValue := reflect.ValueOf(&form).Elem()
 	formType := formValue.Type()
 
-	for i := range formValue.NumField() {
+	for i := 0; i < formValue.NumField(); i++ {
 		field := formValue.Field(i)
+		if !field.CanSet() {
+			continue
+		}
+
 		jsonTag := formType.Field(i).Tag.Get("json")
+		if jsonTag == "" {
+			continue
+		}
 
 		// Handle alternative keys (e.g., json:"Remarks,alt=Text4")
 		keys := []string{}
-		for part := range strings.SplitSeq(jsonTag, ",") {
+
+		// Split by comma to separate the main tag from alt options
+		tagParts := strings.Split(jsonTag, ",")
+
+		// First part is always the main field name
+		if tagParts[0] != "" && tagParts[0] != "-" {
+			keys = append(keys, strings.ToLower(tagParts[0]))
+		}
+
+		// Check remaining parts for alt= prefix
+		for _, part := range tagParts[1:] {
 			if strings.HasPrefix(part, "alt=") {
-				keys = append(keys, strings.TrimPrefix(part, "alt="))
-			} else {
-				keys = append(keys, part)
+				altKey := strings.TrimPrefix(part, "alt=")
+				keys = append(keys, strings.ToLower(altKey))
 			}
 		}
 
 		// Find the first available key in the report map
 		for _, key := range keys {
 			if value, exists := report[key]; exists {
-				if field.CanSet() {
-					field.SetString(value)
-					break
-				}
+				field.SetString(value)
+				break
 			}
 		}
 	}
