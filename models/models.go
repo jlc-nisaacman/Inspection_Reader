@@ -16,7 +16,7 @@ type InspectionForm struct {
 	Location_City_State                                                       string `json:"CITY  STATE_2"`
 	Location_City_State_LN_2                                                  string `json:"CITY STATE_2 LN 2"`
 	Contact                                                                   string `json:"CONTACT"`
-	Date                                                                      string `json:"DATE"`
+	Date                                                                      string `json:"DATE,alt=DATE1"`
 	Phone                                                                     string `json:"PHONE"`
 	Inspector                                                                 string `json:"INSPECTOR"`
 	Email                                                                     string `json:"EMAIL"`
