@@ -7,27 +7,55 @@ import (
 	"main/models"
 	"main/utils"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
 
-// ParseDate converts a date string from MM/DD/YY format to a database-friendly YYYY-MM-DD format.
+// ParseDate converts a date string from various formats to a database-friendly YYYY-MM-DD format.
 // Returns nil if the date string cannot be parsed.
 //
 // Parameters:
-//   - dateStr: Date string in MM/DD/YY format
+//   - dateStr: Date string in various possible formats
 //
 // Returns:
 //   - Date in YYYY-MM-DD format, or nil if parsing fails
 func ParseDate(dateStr string) any {
-	layout := "01/02/06" // MM/DD/YY format
-	parsedTime, err := time.Parse(layout, dateStr)
-	if err != nil {
+	if dateStr == "" {
 		return nil
 	}
-	return parsedTime.Format("2006-01-02") // Return YYYY-MM-DD format
+
+	// Trim any whitespace
+	dateStr = strings.TrimSpace(dateStr)
+
+	// Try multiple possible formats
+	possibleFormats := []string{
+		"01/02/06",   // MM/DD/YY with leading zeros
+		"1/2/06",     // M/D/YY without leading zeros
+		"01-02-06",   // MM-DD-YY with dashes
+		"1-2-06",     // M-D-YY with dashes
+		"01/02/2006", // MM/DD/YYYY
+		"1/2/2006",   // M/D/YYYY
+		"01-02-2006", // MM-DD-YYYY with dashes
+		"1-2-2006",   // M-D-YYYY with dashes
+		"2006-01-02", // YYYY-MM-DD
+		"2006/01/02", // YYYY/MM/DD
+		"010206",     // MMDDYY without separators
+		"20060102",   // YYYYMMDD without separators
+	}
+
+	for _, format := range possibleFormats {
+		parsedTime, err := time.Parse(format, dateStr)
+		if err == nil {
+			return parsedTime.Format("2006-01-02") // Return in YYYY-MM-DD format
+		}
+	}
+
+	// If no format worked, log the problematic date
+	utils.LogSafe("Could not parse date: %s", dateStr)
+	return nil
 }
 
 // ConnectDatabase establishes a connection to the PostgreSQL database using
