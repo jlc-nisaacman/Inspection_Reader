@@ -261,7 +261,7 @@ type PumpForm struct {
 	Pump_Model                    string `json:"MODEL"`
 	Pump_Rated_GPM                string `json:"RATED GPM"`
 	Pump_Serial_Number            string `json:"SN"`
-	Pump_Max_PSI                  string `json:"SMAX PSI"`
+	Pump_Max_PSI                  string `json:"MAX PSI"`
 	Pump_Power                    string `json:"Dropdown10"`
 	Pump_Rated_PSI                string `json:"RATED PSI"`
 	Pump_Water_Supply             string `json:"Dropdown9"`
