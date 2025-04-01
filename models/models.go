@@ -252,9 +252,9 @@ type PumpForm struct {
 	Report_To                     string `json:"REPORT TO"`
 	Building                      string `json:"BUILDINGATTN"`
 	Attention                     string `json:"ATTN:"`
-	Street                        string `json:"STREET:"`
-	Inspector                     string `json:"INSPECTORSELECT:"`
-	City_State                    string `json:"CITY  STATE:"`
+	Street                        string `json:"STREET"`
+	Inspector                     string `json:"INSPECTORSELECT"`
+	City_State                    string `json:"CITY  STATE"`
 	Date                          string `json:"DATE"`
 	Pump_Make                     string `json:"MAKE"`
 	Pump_Rated_RPM                string `json:"RATED RPM"`
