@@ -10,6 +10,7 @@ import (
 )
 
 // ReadPDF opens a PDF file, extracts form field data, and identifies the form type.
+// This version trims whitespace from all values during extraction.
 //
 // Parameters:
 //   - pdfPath: File path to the PDF to be processed
@@ -58,21 +59,27 @@ func ReadPDF(pdfPath string) (formType string, report map[string]string) {
 			if text.Multiline {
 				text.Value = strings.ReplaceAll(text.Value, "\r", " ")
 			}
-			report[name] = text.Value
+			// Trim whitespace from the value
+			value := strings.TrimSpace(text.Value)
+			report[name] = value
 			extractedFields[name] = true
 		}
 
 		// Process radio button groups
 		for _, radio := range form.RadioButtonGroups {
 			name := strings.TrimSpace(strings.ToLower(radio.Name))
-			report[name] = radio.Value
+			// Trim whitespace from the value
+			value := strings.TrimSpace(radio.Value)
+			report[name] = value
 			extractedFields[name] = true
 		}
 
 		// Process combo boxes (dropdown selections)
 		for _, combo := range form.ComboBoxes {
 			name := strings.TrimSpace(strings.ToLower(combo.Name))
-			report[name] = combo.Value
+			// Trim whitespace from the value
+			value := strings.TrimSpace(combo.Value)
+			report[name] = value
 			extractedFields[name] = true
 		}
 	}
@@ -100,6 +107,7 @@ func ReadPDF(pdfPath string) (formType string, report map[string]string) {
 
 // MapForm maps a generic report map to a specific form struct using reflection.
 // It uses struct tags to match report keys with struct fields.
+// This version trims whitespace from all string values before assignment.
 //
 // Type Parameter:
 //   - T: The target struct type to map the report data to
@@ -149,7 +157,9 @@ func MapForm[T any](report map[string]string) T {
 		// Try each possible key until we find a match in the report
 		for _, key := range keys {
 			if value, exists := report[key]; exists {
-				field.SetString(value)
+				// Trim whitespace from the value before setting it
+				trimmedValue := strings.TrimSpace(value)
+				field.SetString(trimmedValue)
 				break
 			}
 		}

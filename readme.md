@@ -13,5 +13,5 @@ PDF_PATH=
 # Building Instructions
 
 ```bash
-go build -ldflags "-s -w" -o .\bin\inspections.exe
+go build -ldflags "-s -w" -o .\bin\inspections_reader.exe
 ```
