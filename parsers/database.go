@@ -7,6 +7,7 @@ import (
 	"main/models"
 	"main/utils"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -30,12 +31,26 @@ func ParseDate(dateStr string) any {
 	// Trim any whitespace
 	dateStr = strings.TrimSpace(dateStr)
 
+	// Preprocess to standardize formats
+	// 1. Remove leading slashes (e.g., "/10/31/24" -> "10/31/24")
+	if strings.HasPrefix(dateStr, "/") {
+		dateStr = dateStr[1:]
+	}
+
+	// 2. Standardize whitespace and AM/PM formatting
+	// Replace multiple spaces with a single space
+	dateStr = regexp.MustCompile(`\s+`).ReplaceAllString(dateStr, " ")
+
+	// Add a space between time and AM/PM if missing
+	dateStr = regexp.MustCompile(`(\d+:\d+)(am|pm|AM|PM)`).ReplaceAllString(dateStr, "$1 $2")
+
 	// Try multiple possible formats
 	possibleFormats := []string{
+		// Basic date formats
 		"01/02/06",   // MM/DD/YY with leading zeros
 		"1/2/06",     // M/D/YY without leading zeros
-		"01-02-06",   // MM-DD-YY with dashes
-		"1-2-06",     // M-D-YY with dashes
+		"01-02-06",   // MM-DD-YY with dashes and leading zeros
+		"1-2-06",     // M-D-YY with dashes without leading zeros
 		"01/02/2006", // MM/DD/YYYY
 		"1/2/2006",   // M/D/YYYY
 		"01-02-2006", // MM-DD-YYYY with dashes
@@ -44,6 +59,56 @@ func ParseDate(dateStr string) any {
 		"2006/01/02", // YYYY/MM/DD
 		"010206",     // MMDDYY without separators
 		"20060102",   // YYYYMMDD without separators
+
+		// Date formats with lowercase AM/PM
+		"1/2/06 3:04 pm",     // M/D/YY with time
+		"01/02/06 3:04 pm",   // MM/DD/YY with time
+		"1/2/2006 3:04 pm",   // M/D/YYYY with time
+		"01/02/2006 3:04 pm", // MM/DD/YYYY with time
+		"1-2-06 3:04 pm",     // M-D-YY with dashes and time
+		"01-02-06 3:04 pm",   // MM-DD-YY with dashes and time
+		"1-2-2006 3:04 pm",   // M-D-YYYY with dashes and time
+		"01-02-2006 3:04 pm", // MM-DD-YYYY with dashes and time
+
+		// Date formats with uppercase AM/PM
+		"1/2/06 3:04 PM",     // M/D/YY with time
+		"01/02/06 3:04 PM",   // MM/DD/YY with time
+		"1/2/2006 3:04 PM",   // M/D/YYYY with time
+		"01/02/2006 3:04 PM", // MM/DD/YYYY with time
+		"1-2-06 3:04 PM",     // M-D-YY with dashes and time
+		"01-02-06 3:04 PM",   // MM-DD-YY with dashes and time
+		"1-2-2006 3:04 PM",   // M-D-YYYY with dashes and time
+		"01-02-2006 3:04 PM", // MM-DD-YYYY with dashes and time
+
+		// Date formats with lowercase am/pm
+		"1/2/06 3:04 am",     // M/D/YY with time
+		"01/02/06 3:04 am",   // MM/DD/YY with time
+		"1/2/2006 3:04 am",   // M/D/YYYY with time
+		"01/02/2006 3:04 am", // MM/DD/YYYY with time
+		"1-2-06 3:04 am",     // M-D-YY with dashes and time
+		"01-02-06 3:04 am",   // MM-DD-YY with dashes and time
+		"1-2-2006 3:04 am",   // M-D-YYYY with dashes and time
+		"01-02-2006 3:04 am", // MM-DD-YYYY with dashes and time
+
+		// Date formats with uppercase AM/PM
+		"1/2/06 3:04 AM",     // M/D/YY with time
+		"01/02/06 3:04 AM",   // MM/DD/YY with time
+		"1/2/2006 3:04 AM",   // M/D/YYYY with time
+		"01/02/2006 3:04 AM", // MM/DD/YYYY with time
+		"1-2-06 3:04 AM",     // M-D-YY with dashes and time
+		"01-02-06 3:04 AM",   // MM-DD-YY with dashes and time
+		"1-2-2006 3:04 AM",   // M-D-YYYY with dashes and time
+		"01-02-2006 3:04 AM", // MM-DD-YYYY with dashes and time
+
+		// 24-hour time formats
+		"1/2/06 15:04",     // M/D/YY with time
+		"01/02/06 15:04",   // MM/DD/YY with time
+		"1/2/2006 15:04",   // M/D/YYYY with time
+		"01/02/2006 15:04", // MM/DD/YYYY with time
+		"1-2-06 15:04",     // M-D-YY with dashes and time
+		"01-02-06 15:04",   // MM-DD-YY with dashes and time
+		"1-2-2006 15:04",   // M-D-YYYY with dashes and time
+		"01-02-2006 15:04", // MM-DD-YYYY with dashes and time
 	}
 
 	for _, format := range possibleFormats {
@@ -53,7 +118,7 @@ func ParseDate(dateStr string) any {
 		}
 	}
 
-	// If no format worked, log the problematic date
+	// If all those formats failed, log the problematic date
 	utils.LogSafe("Could not parse date: %s", dateStr)
 	return nil
 }
