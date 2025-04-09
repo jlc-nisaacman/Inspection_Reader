@@ -1,7 +1,7 @@
 # Inspections Reader
 Collects fillable PDFs from PDF_PATH. Identify which report the PDF is, then writes the data to the database.
 
-# Environment Varables
+# Environment Variables
 ```bash
 DB_USER=
 DB_PASS=
