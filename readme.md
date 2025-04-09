@@ -9,6 +9,8 @@ DB_HOST=
 DB_NAME=
 PDF_PATH=
 ```
+# Logos
+[icons8.com](https://icons8.com/license)
 
 # Building Instructions
 Compile logo
