@@ -80,10 +80,12 @@ func main() {
 				parsers.InsertPumpTable(db, form)
 			case "Backflow Form":
 				form := parsers.MapForm[models.BackflowForm](report)
+				parsers.ProcessBackflowChoices(&form)
 				parsers.CreateBackflowTable(db)
 				parsers.InsertBackflowTable(db, form)
 			case "Backflow Form Alt":
 				form := parsers.MapForm[models.BackflowForm](report)
+				parsers.ProcessBackflowChoices(&form)
 				parsers.CreateBackflowTable(db)
 				parsers.InsertBackflowTable(db, form)
 			default:
