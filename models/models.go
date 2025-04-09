@@ -364,87 +364,44 @@ type PumpForm struct {
 
 type BackflowForm struct {
 	PDF_Path                                string `json:"pdf_path"`
-	Owner_Of_Property                       string `json:"Bill to"`
-	Date                                    string `json:"Date"`
-	Mailing_Address                         string `json:"Mailing"`
-	Tested_By                               string `json:"Tested by"`
-	Certificate_Number                      string `json:"Certificate #"`
-	Contact_Person                          string `json:"Contact"`
-	Backflow_Type                           string `json:"BF Type"`
-	Backflow_Make                           string `json:"BF Make"`
-	Backflow_Model                          string `json:"BF model"`
-	Backflow_Size                           string `json:"BF size"`
-	Backflow_Serial_Number                  string `json:"BF SN"`
-	Test_Type                               string `json:"Test freq"`
-	Device_Location                         string `json:"Device location"`
+	Owner_Of_Property                       string `json:"Bill to,alt=Text2"`
+	Date                                    string `json:"Date,alt=Text5"`
+	Mailing_Address                         string `json:"Mailing,alt=Text3"`
+	Tested_By                               string `json:"Tested by,alt=Dropdown8"`
+	Certificate_Number                      string `json:"Certificate #,alt=Dropdown9"`
+	Contact_Person                          string `json:"Contact,alt=Text4"`
+	Backflow_Type                           string `json:"BF Type,alt=Group11"`
+	Backflow_Make                           string `json:"BF Make,alt=Dropdown12"`
+	Backflow_Model                          string `json:"BF model,alt=Text7"`
+	Backflow_Size                           string `json:"BF size,alt=Dropdown13"`
+	Backflow_Serial_Number                  string `json:"BF SN,alt=Text14"`
+	Test_Type                               string `json:"Test freq,alt=Group2"`
+	Device_Location                         string `json:"Device location,alt=Text1"`
 	RPZ_Check_Valve_1_Closed_Tight          string `json:"Check Box3"`
 	RPZ_Check_Valve_1_Leaked                string `json:"Check Box4"`
-	RPZ_Check_Valve_1_PSID                  string `json:"rpzck 1"`
+	RPZ_Check_Valve_1_PSID                  string `json:"rpzck 1,alt=Text16"`
 	RPZ_Check_Valve_2_Closed_Tight          string `json:"Check Box5"`
 	RPZ_Check_Valve_Flow                    string `json:"Check Box7"`
 	RPZ_Check_Valve_No_Flow                 string `json:"Check Box8"`
 	PVB_SRVB_Check_Valve_Flow               string `json:"Group6"`
-	RPZ_Relief_Valve_Opened_At_PSID         string `json:"relief psi"`
-	RPZ_Check_Valve_2_PSID                  string `json:"rpzck2"`
+	RPZ_Relief_Valve_Opened_At_PSID         string `json:"relief psi,alt=Text17"`
+	RPZ_Check_Valve_2_PSID                  string `json:"rpzck2,alt=Text18"`
 	RPZ_Check_Valve_2_Leaked                string `json:"Check Box6"`
-	PVB_SRVB_Check_Valve_PSID               string `json:"pvb"`
+	PVB_SRVB_Check_Valve_PSID               string `json:"pvb,alt=Text19"`
 	RPZ_Relief_Valve_Did_Not_Open           string `json:"Check Box15"`
-	PVB_SRVB_Air_Inlet_Valve_Opened_At_PSID string `json:"pvb open"`
-	DCVA_Back_Pressure_Test_1_PSI           string `json:"tc1 psi"`
-	DCVA_Back_Pressure_Test_4_PSI           string `json:"tc2 psi"`
-	DCVA_Check_Valve_1_PSID                 string `json:"dc ck1"`
-	DCVA_Check_Valve_2_PSID                 string `json:"dc ck2"`
+	PVB_SRVB_Air_Inlet_Valve_Opened_At_PSID string `json:"pvb open,alt=Text20"`
+	DCVA_Back_Pressure_Test_1_PSI           string `json:"tc1 psi,alt=Text22"`
+	DCVA_Back_Pressure_Test_4_PSI           string `json:"tc2 psi,alt=Text23"`
+	DCVA_Check_Valve_1_PSID                 string `json:"dc ck1,alt=Text24"`
+	DCVA_Check_Valve_2_PSID                 string `json:"dc ck2,alt=Text25"`
 	DCVA_Flow                               string `json:"Check Box9"`
 	DCVA_No_Flow                            string `json:"Check Box10"`
-	Downsteam_Shutoff_Valve_Status          string `json:"downstream"`
+	Downsteam_Shutoff_Valve_Status          string `json:"downstream,alt=Group8"`
 	PVB_SRVB_Air_Inlet_Valve_Did_Not_Open   string `json:"Check Box21"`
-	Protection_Type                         string `json:"service type"`
-	Result                                  string `json:"pass fail"`
-	Remarks_1                               string `json:"bf remark"`
-	Remarks_2                               string `json:"bf remark2"`
-	Witness                                 string `json:"witness"`
-	Remarks_3                               string `json:"bf remark3"`
-}
-type BackflowForm2 struct {
-	PDF_Path                                string `json:"pdf_path"`
-	Owner_Of_Property                       string `json:"Text2"`
-	Date                                    string `json:"Text5"`
-	Mailing_Address                         string `json:"Text3"`
-	Tested_By                               string `json:"Dropdown8"`
-	Certificate_Number                      string `json:"Dropdown9"`
-	Contact_Person                          string `json:"Text4"`
-	Backflow_Type                           string `json:"Group11"`
-	Backflow_Make                           string `json:"Dropdown12"`
-	Backflow_Model                          string `json:"Text7"`
-	Backflow_Size                           string `json:"Dropdown13"`
-	Backflow_Serial_Number                  string `json:"Text14"`
-	Test_Type                               string `json:"Group2"`
-	Device_Location                         string `json:"Text1"`
-	RPZ_Check_Valve_1_Closed_Tight          string `json:"Check Box3"`
-	RPZ_Check_Valve_1_Leaked                string `json:"Check Box4"`
-	RPZ_Check_Valve_1_PSID                  string `json:"Text16"`
-	RPZ_Check_Valve_2_Closed_Tight          string `json:"Check Box5"`
-	RPZ_Check_Valve_Flow                    string `json:"Check Box7"`
-	RPZ_Check_Valve_No_Flow                 string `json:"Check Box8"`
-	PVB_SRVB_Check_Valve_Flow               string `json:"Group6"`
-	RPZ_Relief_Valve_Opened_At_PSID         string `json:"Text17"`
-	RPZ_Check_Valve_2_PSID                  string `json:"Text18"`
-	RPZ_Check_Valve_2_Leaked                string `json:"Check Box6"`
-	PVB_SRVB_Check_Valve_PSID               string `json:"Text19"`
-	RPZ_Relief_Valve_Did_Not_Open           string `json:"Check Box15"`
-	PVB_SRVB_Air_Inlet_Valve_Opened_At_PSID string `json:"Text20"`
-	DCVA_Back_Pressure_Test_1_PSI           string `json:"Text22"`
-	DCVA_Back_Pressure_Test_4_PSI           string `json:"Text23"`
-	DCVA_Check_Valve_1_PSID                 string `json:"Text24"`
-	DCVA_Check_Valve_2_PSID                 string `json:"Text25"`
-	DCVA_Flow                               string `json:"Check Box9"`
-	DCVA_No_Flow                            string `json:"Check Box10"`
-	Downsteam_Shutoff_Valve_Status          string `json:"Group8"`
-	PVB_SRVB_Air_Inlet_Valve_Did_Not_Open   string `json:"Check Box21"`
-	Protection_Type                         string `json:"Group9"`
-	Result                                  string `json:"Group10"`
-	Remarks_1                               string `json:"Text26"`
-	Remarks_2                               string `json:"Text27"`
-	Witness                                 string `json:"Text29"`
-	Remarks_3                               string `json:"Text28"`
+	Protection_Type                         string `json:"service type,alt=Group9"`
+	Result                                  string `json:"pass fail,alt=Group10"`
+	Remarks_1                               string `json:"bf remark,alt=Text26"`
+	Remarks_2                               string `json:"bf remark2,alt=Text27"`
+	Witness                                 string `json:"witness,alt=Text29"`
+	Remarks_3                               string `json:"bf remark3,alt=Text28"`
 }
