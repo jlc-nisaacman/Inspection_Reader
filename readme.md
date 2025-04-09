@@ -11,7 +11,12 @@ PDF_PATH=
 ```
 
 # Building Instructions
+Compile logo
+```bash
+windres.exe icon.rc -O coff icon.syso
+```
 
+Compile program
 ```bash
 go build -ldflags "-s -w" -o .\bin\inspections_reader.exe
 ```
