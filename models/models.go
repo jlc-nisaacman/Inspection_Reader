@@ -34,7 +34,7 @@ type InspectionForm struct {
 	Are_Fire_Department_Connections_In_Satisfactory_Condition                 string `json:"4A"`
 	Are_Caps_In_Place                                                         string `json:"4B"`
 	Is_Fire_Department_Connection_Easily_Accessible                           string `json:"4C"`
-	Automatic_Drain_Vale_In_Place                                             string `json:"4D"`
+	Automatic_Drain_Valve_In_Place                                            string `json:"4D"`
 	Is_The_Pump_Room_Heated                                                   string `json:"5A"`
 	Is_The_Fire_Pump_In_Service                                               string `json:"5B"`
 	Was_Fire_Pump_Run_During_This_Inspection                                  string `json:"5C"`
@@ -64,8 +64,8 @@ type InspectionForm struct {
 	Does_The_Loss_Of_Power_Alarm_Work                                         string `json:"7C"`
 	Does_The_Electric_Pump_Running_Alarm_Work                                 string `json:"7D"`
 	Power_Failure_Condition_Simulated_While_Pump_Operating_At_Peak_Load       string `json:"7E"`
-	Trasfer_Of_Power_To_Alternative_Power_Source_Verified                     string `json:"7F"`
-	Power_Faulure_Condition_Removed                                           string `json:"7G"`
+	Transfer_Of_Power_To_Alternative_Power_Source_Verified                    string `json:"7F"`
+	Power_Failure_Condition_Removed                                           string `json:"7G"`
 	Pump_Reconnected_To_Normal_Power_Source_After_A_Time_Delay                string `json:"7H"`
 	Have_Anti_Freeze_Systems_Been_Tested                                      string `json:"8A"`
 	Freeze_Protection_In_Degrees_F                                            string `json:"AFTEMP"`

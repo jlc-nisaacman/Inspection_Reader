@@ -53,11 +53,10 @@ func main() {
 	var wg sync.WaitGroup
 	workerPool := make(chan struct{}, 10)
 
-	// Create a progress bar to show processing status (PDF parsing + API upload)
-	// We'll update it manually: fileCount for parsing, then 4 more for API batches
+	// Create a progress bar to show processing status (PDF parsing + individual API uploads)
+	// Calculate total steps: PDF parsing + all form records to upload
 	fileCount := len(pdfFiles)
-	totalSteps := fileCount + 4 // PDFs + 4 batch API calls
-	bar := pb.StartNew(totalSteps)
+	bar := pb.StartNew(fileCount) // Start with PDF count, will add API uploads dynamically
 
 	// Process each PDF file in parallel
 	for _, pdf := range pdfFiles {
@@ -117,28 +116,40 @@ func main() {
 	// Wait for all workers to complete
 	wg.Wait()
 
-	// Send all batches to the API
-	utils.LogSafe("\n=== Sending batches to API ===")
+	// Update progress bar total to include API uploads
+	totalRecords := len(inspectionForms) + len(dryForms) + len(pumpForms) + len(backflowForms)
+	bar.SetTotal(int64(fileCount + totalRecords))
 
-	if err := apiClient.SendInspectionsBatch(inspectionForms); err != nil {
-		log.Printf("Error sending inspections batch: %+v", err)
-	}
-	bar.Increment()
+	// Send all records to the API concurrently
+	utils.LogSafe("\n=== Sending records to API ===")
 
-	if err := apiClient.SendDrySystemsBatch(dryForms); err != nil {
-		log.Printf("Error sending dry systems batch: %+v", err)
+	// Send inspections concurrently
+	if err := apiClient.SendInspectionsConcurrent(inspectionForms, func() {
+		bar.Increment()
+	}); err != nil {
+		log.Printf("Error sending inspections: %+v", err)
 	}
-	bar.Increment()
 
-	if err := apiClient.SendPumpSystemsBatch(pumpForms); err != nil {
-		log.Printf("Error sending pump systems batch: %+v", err)
+	// Send dry systems concurrently
+	if err := apiClient.SendDrySystemsConcurrent(dryForms, func() {
+		bar.Increment()
+	}); err != nil {
+		log.Printf("Error sending dry systems: %+v", err)
 	}
-	bar.Increment()
 
-	if err := apiClient.SendBackflowBatch(backflowForms); err != nil {
-		log.Printf("Error sending backflow batch: %+v", err)
+	// Send pump systems concurrently
+	if err := apiClient.SendPumpSystemsConcurrent(pumpForms, func() {
+		bar.Increment()
+	}); err != nil {
+		log.Printf("Error sending pump systems: %+v", err)
 	}
-	bar.Increment()
+
+	// Send backflow concurrently
+	if err := apiClient.SendBackflowConcurrent(backflowForms, func() {
+		bar.Increment()
+	}); err != nil {
+		log.Printf("Error sending backflow: %+v", err)
+	}
 
 	// Finish and close the progress bar
 	bar.Finish()

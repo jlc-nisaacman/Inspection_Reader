@@ -7,7 +7,7 @@ Successfully migrated the inspections reader application from direct PostgreSQL 
 
 ### 1. Environment Configuration (.env)
 - **Added**: `API_URL=http://localhost:8081` - Base URL for the API
-- **Added**: `READER_UUID=3b1eb00a-090e-46c1-9cf0-24c816bb0141` - UUID token for authentication
+- **Added**: `READER_UUID` - UUID token for authentication
 - **Kept**: `PDF_PATH` - Path to PDF files directory
 - **Removed/Commented**: Database credentials (DB_USER, DB_PASS, DB_HOST, DB_NAME) - no longer needed
 
