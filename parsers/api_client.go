@@ -80,8 +80,16 @@ func structToMap(s interface{}) map[string]interface{} {
 			// Convert field value to interface{}
 			fieldValue := field.Interface()
 
-			// Handle date fields - convert invalid/empty strings to nil for PostgreSQL
-			if strValue, ok := fieldValue.(string); ok && strings.Contains(strings.ToLower(fieldName), "date") {
+			// Handle pointer types - dereference if not nil, otherwise set to nil
+			if field.Kind() == reflect.Ptr {
+				if field.IsNil() {
+					result[dbFieldName] = nil
+				} else {
+					// Dereference the pointer to get the actual value
+					result[dbFieldName] = field.Elem().Interface()
+				}
+			} else if strValue, ok := fieldValue.(string); ok && strings.Contains(strings.ToLower(fieldName), "date") {
+				// Handle date fields - convert invalid/empty strings to nil for PostgreSQL
 				// Trim whitespace
 				strValue = strings.TrimSpace(strValue)
 
@@ -116,6 +124,47 @@ func convertStructSliceToMaps(slice interface{}) []map[string]interface{} {
 	}
 
 	return result
+}
+
+// GetUserIDFromUUID looks up the user ID from the UUID via the API
+func (c *APIClient) GetUserIDFromUUID() (int, error) {
+	// Create request
+	url := c.BaseURL + "/users/me"
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return 0, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Set headers
+	req.Header.Set("Authorization", "Bearer "+c.UUID)
+
+	// Send request
+	resp, err := c.HTTPClient.Do(req)
+	if err != nil {
+		return 0, fmt.Errorf("failed to send request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// Read response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, fmt.Errorf("failed to read response: %w", err)
+	}
+
+	// Check status code
+	if resp.StatusCode != http.StatusOK {
+		return 0, fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body))
+	}
+
+	// Parse response
+	var userResponse struct {
+		ID int `json:"id"`
+	}
+	if err := json.Unmarshal(body, &userResponse); err != nil {
+		return 0, fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	return userResponse.ID, nil
 }
 
 // sendBatchRequest sends a batch request to the specified endpoint

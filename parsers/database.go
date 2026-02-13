@@ -8,6 +8,7 @@ import (
 	"main/utils"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -15,15 +16,17 @@ import (
 	_ "github.com/lib/pq"
 )
 
-// ParseDate converts a date string from various formats to a database-friendly YYYY-MM-DD format.
+// ParseDate converts a date string from various formats to a *time.Time pointer.
 // Returns nil if the date string cannot be parsed.
 //
 // Parameters:
 //   - dateStr: Date string in various possible formats
+//   - pdfPath: Path to the PDF file (for error logging)
+//   - fieldName: Name of the field being parsed (for error logging)
 //
 // Returns:
-//   - Date in YYYY-MM-DD format, or nil if parsing fails
-func ParseDate(dateStr string) any {
+//   - Pointer to time.Time, or nil if parsing fails
+func ParseDate(dateStr string, pdfPath string, fieldName string) *time.Time {
 	if dateStr == "" {
 		return nil
 	}
@@ -33,9 +36,7 @@ func ParseDate(dateStr string) any {
 
 	// Preprocess to standardize formats
 	// 1. Remove leading slashes (e.g., "/10/31/24" -> "10/31/24")
-	if strings.HasPrefix(dateStr, "/") {
-		dateStr = dateStr[1:]
-	}
+	dateStr = strings.TrimPrefix(dateStr, "/")
 
 	// 2. Standardize whitespace and AM/PM formatting
 	// Replace multiple spaces with a single space
@@ -114,12 +115,108 @@ func ParseDate(dateStr string) any {
 	for _, format := range possibleFormats {
 		parsedTime, err := time.Parse(format, dateStr)
 		if err == nil {
-			return parsedTime.Format("2006-01-02") // Return in YYYY-MM-DD format
+			return &parsedTime
 		}
 	}
 
 	// If all those formats failed, log the problematic date
-	utils.LogSafe("Could not parse date: %s", dateStr)
+	utils.LogSafe("Could not parse date '%s' in field '%s' from %s", dateStr, fieldName, pdfPath)
+	return nil
+}
+
+// ParseFloat converts a string to a *float64 pointer.
+// Returns nil if the string cannot be parsed.
+//
+// Parameters:
+//   - value: String value to parse
+//   - pdfPath: Path to the PDF file (for error logging)
+//   - fieldName: Name of the field being parsed (for error logging)
+//
+// Returns:
+//   - Pointer to float64, or nil if parsing fails
+func ParseFloat(value string, pdfPath string, fieldName string) *float64 {
+	if value == "" || strings.EqualFold(value, "N/A") || strings.EqualFold(value, "None") {
+		return nil
+	}
+
+	// Clean common OCR errors
+	value = strings.TrimSpace(value)
+	value = strings.ReplaceAll(value, "O", "0") // OCR often mistakes O for 0
+	value = strings.ReplaceAll(value, "o", "0")
+
+	if f, err := strconv.ParseFloat(value, 64); err == nil {
+		return &f
+	}
+
+	utils.LogSafe("Could not parse float '%s' in field '%s' from %s", value, fieldName, pdfPath)
+	return nil
+}
+
+// ParseInt converts a string to an *int pointer.
+// Returns nil if the string cannot be parsed.
+//
+// Parameters:
+//   - value: String value to parse
+//   - pdfPath: Path to the PDF file (for error logging)
+//   - fieldName: Name of the field being parsed (for error logging)
+//
+// Returns:
+//   - Pointer to int, or nil if parsing fails
+func ParseInt(value string, pdfPath string, fieldName string) *int {
+	if value == "" || strings.EqualFold(value, "N/A") || strings.EqualFold(value, "None") {
+		return nil
+	}
+
+	// Clean common OCR errors
+	value = strings.TrimSpace(value)
+	value = strings.ReplaceAll(value, "l", "1") // OCR often mistakes l for 1
+	value = strings.ReplaceAll(value, "O", "0")
+
+	if i, err := strconv.Atoi(value); err == nil {
+		return &i
+	}
+
+	utils.LogSafe("Could not parse int '%s' in field '%s' from %s", value, fieldName, pdfPath)
+	return nil
+}
+
+// ParseBool converts a string to a *bool pointer.
+// Returns nil if the string cannot be parsed.
+//
+// Parameters:
+//   - value: String value to parse
+//   - pdfPath: Path to the PDF file (for error logging)
+//   - fieldName: Name of the field being parsed (for error logging)
+//
+// Returns:
+//   - Pointer to bool, or nil if parsing fails
+func ParseBool(value string, pdfPath string, fieldName string) *bool {
+	if value == "" {
+		return nil
+	}
+
+	value = strings.ToLower(strings.TrimSpace(value))
+
+	// N/A or None values - return nil (NULL in database)
+	if value == "n/a" || value == "na" || value == "none" {
+		return nil
+	}
+
+	// True values
+	if value == "yes" || value == "y" || value == "true" ||
+		value == "x" || value == "✓" || value == "1" {
+		t := true
+		return &t
+	}
+
+	// False values
+	if value == "no" || value == "n" || value == "false" || value == "0" {
+		f := false
+		return &f
+	}
+
+	// Unknown value - log and return nil
+	utils.LogSafe("Could not parse bool '%s' in field '%s' from %s", value, fieldName, pdfPath)
 	return nil
 }
 
@@ -383,7 +480,11 @@ func CreateInspectionTable(db *sql.DB) {
 	adjustments_or_corrections_make TEXT,
 	explanation_of_any_no_answers TEXT,
 	explanation_of_any_no_answers_continued TEXT,
-	notes TEXT
+	notes TEXT,
+	pdf_needed BOOLEAN,
+	created_by INTEGER REFERENCES users(id),
+	created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
+	updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()
 	)`
 	_, err := db.Exec(query)
 	if err != nil {
@@ -605,7 +706,8 @@ func InsertInspectionTable(db *sql.DB, form models.InspectionForm) {
 	adjustments_or_corrections_make,
 	explanation_of_any_no_answers,
 	explanation_of_any_no_answers_continued,
-	notes
+	notes,
+	pdf_needed
 	) VALUES (
 	$1,
 	$2,
@@ -818,7 +920,8 @@ func InsertInspectionTable(db *sql.DB, form models.InspectionForm) {
 	$209,
 	$210,
 	$211,
-	$212
+	$212,
+	$213
 	) ON CONFLICT (pdf_path) DO UPDATE SET
 	bill_to = EXCLUDED.bill_to,
 	location = EXCLUDED.location,
@@ -1047,7 +1150,7 @@ func InsertInspectionTable(db *sql.DB, form models.InspectionForm) {
 		form.Location_City_State,
 		form.Location_City_State_LN_2,
 		form.Contact,
-		ParseDate(form.Date),
+		form.Date,
 		form.Phone,
 		form.Inspector,
 		form.Email,
@@ -1117,8 +1220,8 @@ func InsertInspectionTable(db *sql.DB, form models.InspectionForm) {
 		form.What_Pressure_Does_Air_Compressor_Stop,
 		form.Did_Low_Air_Alarm_Operate_PSI,
 		form.Did_Low_Air_Alarm_Operate,
-		ParseDate(form.Date_Of_Last_Full_Trip_Test),
-		ParseDate(form.Date_Of_Last_Internal_Inspection),
+		form.Date_Of_Last_Full_Trip_Test,
+		form.Date_Of_Last_Internal_Inspection,
 		form.Are_Valves_In_Service_And_In_Good_Condition,
 		form.Were_Valves_Tripped,
 		form.What_Pressure_Did_Pneumatic_Actuator_Trip_PSI,
@@ -1244,6 +1347,7 @@ func InsertInspectionTable(db *sql.DB, form models.InspectionForm) {
 		form.Explanation_Of_Any_No_Answers,
 		form.Explanation_Of_Any_No_Answers_Continued,
 		form.Notes,
+		form.PDF_Needed,
 	)
 	if err != nil {
 		utils.LogSafe("Could not insert into Inspection Table: %+v", err)
@@ -1267,22 +1371,26 @@ func CreateDryTable(db *sql.DB) {
 	dry_pipe_valve_make TEXT,
 	dry_pipe_valve_model TEXT,
 	dry_pipe_valve_size TEXT,
-	dry_pipe_valve_year TEXT,
+	dry_pipe_valve_year INTEGER,
 	dry_pipe_valve_controls_sprinklers_in TEXT,
 	quick_opening_device_make TEXT,
 	quick_opening_device_model TEXT,
-	quick_opening_device_control_valve_open TEXT,
-	quick_opening_device_year TEXT,
-	trip_test_air_pressure_before_test TEXT,
-	trip_test_air_system_tripped_at TEXT,
-	trip_test_water_pressure_before_test TEXT,
+	quick_opening_device_control_valve_open BOOLEAN,
+	quick_opening_device_year INTEGER,
+	trip_test_air_pressure_before_test NUMERIC,
+	trip_test_air_system_tripped_at NUMERIC,
+	trip_test_water_pressure_before_test NUMERIC,
 	trip_test_time TEXT,
-	trip_test_air_quick_opening_device_operated_at TEXT,
+	trip_test_air_quick_opening_device_operated_at NUMERIC,
 	trip_test_time_quick_opening_device_operated_at TEXT,
 	trip_test_time_water_at_inspectors_test TEXT,
-	trip_test_static_water_pressure TEXT,
-	trip_test_residual_water_pressure TEXT,
-	remarks_on_test TEXT
+	trip_test_static_water_pressure NUMERIC,
+	trip_test_residual_water_pressure NUMERIC,
+	remarks_on_test TEXT,
+	pdf_needed BOOLEAN,
+	created_by INTEGER REFERENCES users(id),
+	created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
+	updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()
 	)`
 	_, err := db.Exec(query)
 	if err != nil {
@@ -1321,7 +1429,8 @@ func InsertDryTable(db *sql.DB, form models.DryForm) {
 	trip_test_time_water_at_inspectors_test,
 	trip_test_static_water_pressure,
 	trip_test_residual_water_pressure,
-	remarks_on_test
+	remarks_on_test,
+	pdf_needed
 	) VALUES (
 	$1,
 	$2,
@@ -1351,7 +1460,8 @@ func InsertDryTable(db *sql.DB, form models.DryForm) {
 	$26,
 	$27,
 	$28,
-	$29
+	$29,
+	$30
 	) ON CONFLICT (pdf_path) DO UPDATE SET
 	report_to = EXCLUDED.report_to,
 	building = EXCLUDED.building,
@@ -1391,7 +1501,7 @@ func InsertDryTable(db *sql.DB, form models.DryForm) {
 		form.Street,
 		form.Inspector,
 		form.City_State,
-		ParseDate(form.Date),
+		form.Date,
 		form.Dry_Pipe_Valve_Make,
 		form.Dry_Pipe_Valve_Model,
 		form.Dry_Pipe_Valve_Size,
@@ -1411,6 +1521,7 @@ func InsertDryTable(db *sql.DB, form models.DryForm) {
 		form.Trip_Test_Static_Water_Pressure,
 		form.Trip_Test_Residual_Water_Pressure,
 		form.Remarks_On_Test,
+		form.PDF_Needed,
 	)
 	if err != nil {
 		utils.LogSafe("Could not insert into Dry Table: %+v", err)
@@ -1430,15 +1541,15 @@ func CreatePumpTable(db *sql.DB) {
 	city_state TEXT,
 	date DATE,
 	pump_make TEXT,
-	pump_rated_rpm TEXT,
+	pump_rated_rpm INTEGER,
 	pump_model TEXT,
-	pump_rated_gpm TEXT,
+	pump_rated_gpm NUMERIC,
 	pump_serial_number TEXT,
-	pump_max_psi TEXT,
+	pump_max_psi NUMERIC,
 	pump_power TEXT,
-	pump_rated_psi TEXT,
+	pump_rated_psi NUMERIC,
 	pump_water_supply TEXT,
-	pump_psi_at_150_percent TEXT,
+	pump_psi_at_150_percent NUMERIC,
 	pump_controller_make TEXT,
 	pump_controller_voltage TEXT,
 	pump_controller_model TEXT,
@@ -1448,7 +1559,7 @@ func CreatePumpTable(db *sql.DB) {
 	diesel_engine_make TEXT,
 	diesel_engine_serial_number TEXT,
 	diesel_engine_model TEXT,
-	diesel_engine_hours TEXT,
+	diesel_engine_hours NUMERIC,
 	flow_test_orifice_size_1 TEXT,
 	flow_test_orifice_size_2 TEXT,
 	flow_test_orifice_size_3 TEXT,
@@ -1456,83 +1567,87 @@ func CreatePumpTable(db *sql.DB) {
 	flow_test_orifice_size_5 TEXT,
 	flow_test_orifice_size_6 TEXT,
 	flow_test_orifice_size_7 TEXT,
-	flow_test_1_suction_psi TEXT,
-	flow_test_1_discharge_psi TEXT,
-	flow_test_1_net_psi TEXT,
-	flow_test_1_rpm TEXT,
-	flow_test_1_o1_pitot TEXT,
-	flow_test_1_o2_pitot TEXT,
-	flow_test_1_o3_pitot TEXT,
-	flow_test_1_o4_pitot TEXT,
-	flow_test_1_o5_pitot TEXT,
-	flow_test_1_o6_pitot TEXT,
-	flow_test_1_o7_pitot TEXT,
-	flow_test_1_o1_gpm TEXT,
-	flow_test_1_o2_gpm TEXT,
-	flow_test_1_o3_gpm TEXT,
-	flow_test_1_o4_gpm TEXT,
-	flow_test_1_o5_gpm TEXT,
-	flow_test_1_o6_gpm TEXT,
-	flow_test_1_o7_gpm TEXT,
-	flow_test_1_total_flow TEXT,
-	flow_test_2_suction_psi TEXT,
-	flow_test_2_discharge_psi TEXT,
-	flow_test_2_net_psi TEXT,
-	flow_test_2_rpm TEXT,
-	flow_test_2_o1_pitot TEXT,
-	flow_test_2_o2_pitot TEXT,
-	flow_test_2_o3_pitot TEXT,
-	flow_test_2_o4_pitot TEXT,
-	flow_test_2_o5_pitot TEXT,
-	flow_test_2_o6_pitot TEXT,
-	flow_test_2_o7_pitot TEXT,
-	flow_test_2_o1_gpm TEXT,
-	flow_test_2_o2_gpm TEXT,
-	flow_test_2_o3_gpm TEXT,
-	flow_test_2_o4_gpm TEXT,
-	flow_test_2_o5_gpm TEXT,
-	flow_test_2_o6_gpm TEXT,
-	flow_test_2_o7_gpm TEXT,
-	flow_test_2_total_flow TEXT,
-	flow_test_3_suction_psi TEXT,
-	flow_test_3_discharge_psi TEXT,
-	flow_test_3_net_psi TEXT,
-	flow_test_3_rpm TEXT,
-	flow_test_3_o1_pitot TEXT,
-	flow_test_3_o2_pitot TEXT,
-	flow_test_3_o3_pitot TEXT,
-	flow_test_3_o4_pitot TEXT,
-	flow_test_3_o5_pitot TEXT,
-	flow_test_3_o6_pitot TEXT,
-	flow_test_3_o7_pitot TEXT,
-	flow_test_3_o1_gpm TEXT,
-	flow_test_3_o2_gpm TEXT,
-	flow_test_3_o3_gpm TEXT,
-	flow_test_3_o4_gpm TEXT,
-	flow_test_3_o5_gpm TEXT,
-	flow_test_3_o6_gpm TEXT,
-	flow_test_3_o7_gpm TEXT,
-	flow_test_3_total_flow TEXT,
-	flow_test_4_suction_psi TEXT,
-	flow_test_4_discharge_psi TEXT,
-	flow_test_4_net_psi TEXT,
-	flow_test_4_rpm TEXT,
-	flow_test_4_o1_pitot TEXT,
-	flow_test_4_o2_pitot TEXT,
-	flow_test_4_o3_pitot TEXT,
-	flow_test_4_o4_pitot TEXT,
-	flow_test_4_o5_pitot TEXT,
-	flow_test_4_o6_pitot TEXT,
-	flow_test_4_o7_pitot TEXT,
-	flow_test_4_o1_gpm TEXT,
-	flow_test_4_o2_gpm TEXT,
-	flow_test_4_o3_gpm TEXT,
-	flow_test_4_o4_gpm TEXT,
-	flow_test_4_o5_gpm TEXT,
-	flow_test_4_o6_gpm TEXT,
-	flow_test_4_o7_gpm TEXT,
-	flow_test_4_total_flow TEXT,
-	remarks_on_test TEXT
+	flow_test_1_suction_psi NUMERIC,
+	flow_test_1_discharge_psi NUMERIC,
+	flow_test_1_net_psi NUMERIC,
+	flow_test_1_rpm INTEGER,
+	flow_test_1_o1_pitot NUMERIC,
+	flow_test_1_o2_pitot NUMERIC,
+	flow_test_1_o3_pitot NUMERIC,
+	flow_test_1_o4_pitot NUMERIC,
+	flow_test_1_o5_pitot NUMERIC,
+	flow_test_1_o6_pitot NUMERIC,
+	flow_test_1_o7_pitot NUMERIC,
+	flow_test_1_o1_gpm NUMERIC,
+	flow_test_1_o2_gpm NUMERIC,
+	flow_test_1_o3_gpm NUMERIC,
+	flow_test_1_o4_gpm NUMERIC,
+	flow_test_1_o5_gpm NUMERIC,
+	flow_test_1_o6_gpm NUMERIC,
+	flow_test_1_o7_gpm NUMERIC,
+	flow_test_1_total_flow NUMERIC,
+	flow_test_2_suction_psi NUMERIC,
+	flow_test_2_discharge_psi NUMERIC,
+	flow_test_2_net_psi NUMERIC,
+	flow_test_2_rpm INTEGER,
+	flow_test_2_o1_pitot NUMERIC,
+	flow_test_2_o2_pitot NUMERIC,
+	flow_test_2_o3_pitot NUMERIC,
+	flow_test_2_o4_pitot NUMERIC,
+	flow_test_2_o5_pitot NUMERIC,
+	flow_test_2_o6_pitot NUMERIC,
+	flow_test_2_o7_pitot NUMERIC,
+	flow_test_2_o1_gpm NUMERIC,
+	flow_test_2_o2_gpm NUMERIC,
+	flow_test_2_o3_gpm NUMERIC,
+	flow_test_2_o4_gpm NUMERIC,
+	flow_test_2_o5_gpm NUMERIC,
+	flow_test_2_o6_gpm NUMERIC,
+	flow_test_2_o7_gpm NUMERIC,
+	flow_test_2_total_flow NUMERIC,
+	flow_test_3_suction_psi NUMERIC,
+	flow_test_3_discharge_psi NUMERIC,
+	flow_test_3_net_psi NUMERIC,
+	flow_test_3_rpm INTEGER,
+	flow_test_3_o1_pitot NUMERIC,
+	flow_test_3_o2_pitot NUMERIC,
+	flow_test_3_o3_pitot NUMERIC,
+	flow_test_3_o4_pitot NUMERIC,
+	flow_test_3_o5_pitot NUMERIC,
+	flow_test_3_o6_pitot NUMERIC,
+	flow_test_3_o7_pitot NUMERIC,
+	flow_test_3_o1_gpm NUMERIC,
+	flow_test_3_o2_gpm NUMERIC,
+	flow_test_3_o3_gpm NUMERIC,
+	flow_test_3_o4_gpm NUMERIC,
+	flow_test_3_o5_gpm NUMERIC,
+	flow_test_3_o6_gpm NUMERIC,
+	flow_test_3_o7_gpm NUMERIC,
+	flow_test_3_total_flow NUMERIC,
+	flow_test_4_suction_psi NUMERIC,
+	flow_test_4_discharge_psi NUMERIC,
+	flow_test_4_net_psi NUMERIC,
+	flow_test_4_rpm INTEGER,
+	flow_test_4_o1_pitot NUMERIC,
+	flow_test_4_o2_pitot NUMERIC,
+	flow_test_4_o3_pitot NUMERIC,
+	flow_test_4_o4_pitot NUMERIC,
+	flow_test_4_o5_pitot NUMERIC,
+	flow_test_4_o6_pitot NUMERIC,
+	flow_test_4_o7_pitot NUMERIC,
+	flow_test_4_o1_gpm NUMERIC,
+	flow_test_4_o2_gpm NUMERIC,
+	flow_test_4_o3_gpm NUMERIC,
+	flow_test_4_o4_gpm NUMERIC,
+	flow_test_4_o5_gpm NUMERIC,
+	flow_test_4_o6_gpm NUMERIC,
+	flow_test_4_o7_gpm NUMERIC,
+	flow_test_4_total_flow NUMERIC,
+	remarks_on_test TEXT,
+	pdf_needed BOOLEAN,
+	created_by INTEGER REFERENCES users(id),
+	created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
+	updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()
 	)`
 	_, err := db.Exec(query)
 	if err != nil {
@@ -1654,7 +1769,8 @@ func InsertPumpTable(db *sql.DB, form models.PumpForm) {
 	flow_test_4_o6_gpm,
 	flow_test_4_o7_gpm,
 	flow_test_4_total_flow,
-	remarks_on_test
+	remarks_on_test,
+	pdf_needed
 	) VALUES (
 	$1,
 	$2,
@@ -1767,7 +1883,8 @@ func InsertPumpTable(db *sql.DB, form models.PumpForm) {
 	$109,
 	$110,
 	$111,
-	$112
+	$112,
+	$113
 	) ON CONFLICT (pdf_path) DO UPDATE SET
 	report_to = EXCLUDED.report_to,
 	building = EXCLUDED.building,
@@ -1888,7 +2005,7 @@ func InsertPumpTable(db *sql.DB, form models.PumpForm) {
 		form.Street,
 		form.Inspector,
 		form.City_State,
-		ParseDate(form.Date),
+		form.Date,
 		form.Pump_Make,
 		form.Pump_Rated_RPM,
 		form.Pump_Model,
@@ -1993,9 +2110,10 @@ func InsertPumpTable(db *sql.DB, form models.PumpForm) {
 		form.Flow_Test_4_O7_GPM,
 		form.Flow_Test_4_Total_Flow,
 		form.Remarks_On_Test,
+		form.PDF_Needed,
 	)
 	if err != nil {
-		utils.LogSafe("Could not insert into Dry Table: %+v", err)
+		utils.LogSafe("Could not insert into Pump Table: %+v", err)
 	}
 }
 
@@ -2017,33 +2135,37 @@ func CreateBackflowTable(db *sql.DB) {
 	backflow_serial_number TEXT,
 	test_type TEXT,
 	device_location TEXT,
-	rpz_check_valve_1_closed_tight TEXT,
-	rpz_check_valve_1_leaked TEXT,
-	rpz_check_valve_1_psid TEXT,
-	rpz_check_valve_2_closed_tight TEXT,
-	rpz_check_valve_flow TEXT,
-	rpz_check_valve_no_flow TEXT,
+	rpz_check_valve_1_closed_tight BOOLEAN,
+	rpz_check_valve_1_leaked BOOLEAN,
+	rpz_check_valve_1_psid NUMERIC,
+	rpz_check_valve_2_closed_tight BOOLEAN,
+	rpz_check_valve_flow BOOLEAN,
+	rpz_check_valve_no_flow BOOLEAN,
 	pvb_srvb_check_valve_flow TEXT,
-	rpz_relief_valve_opened_at_psid TEXT,
-	rpz_check_valve_2_psid TEXT,
-	rpz_check_valve_2_leaked TEXT,
-	pvb_srvb_check_valve_psid TEXT,
-	rpz_relief_valve_did_not_open TEXT,
-	pvb_srvb_air_inlet_valve_opened_at_psid TEXT,
-	dcva_back_pressure_test_1_psi TEXT,
-	dcva_back_pressure_test_4_psi TEXT,
-	dcva_check_valve_1_psid TEXT,
-	dcva_check_valve_2_psid TEXT,
-	dcva_flow TEXT,
-	dcva_no_flow TEXT,
+	rpz_relief_valve_opened_at_psid NUMERIC,
+	rpz_check_valve_2_psid NUMERIC,
+	rpz_check_valve_2_leaked BOOLEAN,
+	pvb_srvb_check_valve_psid NUMERIC,
+	rpz_relief_valve_did_not_open BOOLEAN,
+	pvb_srvb_air_inlet_valve_opened_at_psid NUMERIC,
+	dcva_back_pressure_test_1_psi NUMERIC,
+	dcva_back_pressure_test_4_psi NUMERIC,
+	dcva_check_valve_1_psid NUMERIC,
+	dcva_check_valve_2_psid NUMERIC,
+	dcva_flow BOOLEAN,
+	dcva_no_flow BOOLEAN,
 	downsteam_shutoff_valve_status TEXT,
-	pvb_srvb_air_inlet_valve_did_not_open TEXT,
+	pvb_srvb_air_inlet_valve_did_not_open BOOLEAN,
 	protection_type TEXT,
 	result TEXT,
 	remarks_1 TEXT,
 	remarks_2 TEXT,
 	witness TEXT,
-	remarks_3 TEXT
+	remarks_3 TEXT,
+	pdf_needed BOOLEAN,
+	created_by INTEGER REFERENCES users(id),
+	created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
+	updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()
 	)`
 	_, err := db.Exec(query)
 	if err != nil {
@@ -2094,7 +2216,8 @@ func InsertBackflowTable(db *sql.DB, form models.BackflowForm) {
 	remarks_1,
 	remarks_2,
 	witness,
-	remarks_3
+	remarks_3,
+	pdf_needed
 	) VALUES (
 	$1,
 	$2,
@@ -2136,7 +2259,8 @@ func InsertBackflowTable(db *sql.DB, form models.BackflowForm) {
 	$38,
 	$39,
 	$40,
-	$41
+	$41,
+	$42
 	)  ON CONFLICT (pdf_path) DO UPDATE SET
 	owner_of_property = EXCLUDED.owner_of_property,
 	date = EXCLUDED.date,
@@ -2182,7 +2306,7 @@ func InsertBackflowTable(db *sql.DB, form models.BackflowForm) {
 	_, err := db.Exec(query,
 		form.PDF_Path,
 		form.Owner_Of_Property,
-		ParseDate(form.Date),
+		form.Date,
 		form.Mailing_Address,
 		form.Tested_By,
 		form.Certificate_Number,
@@ -2221,6 +2345,7 @@ func InsertBackflowTable(db *sql.DB, form models.BackflowForm) {
 		form.Remarks_2,
 		form.Witness,
 		form.Remarks_3,
+		form.PDF_Needed,
 	)
 	if err != nil {
 		utils.LogSafe("Could not insert into Backflow Table: %+v", err)

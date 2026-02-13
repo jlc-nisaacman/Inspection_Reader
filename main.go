@@ -40,6 +40,12 @@ func main() {
 		log.Fatalf("Error initializing API client: %+v", err)
 	}
 
+	// Look up the user ID from the UUID via the API
+	readerUserID, err := apiClient.GetUserIDFromUUID()
+	if err != nil {
+		log.Fatalf("Failed to look up user ID from UUID: %v", err)
+	}
+
 	// Create batch accumulators for each form type
 	var (
 		inspectionForms []models.InspectionForm
@@ -80,28 +86,38 @@ func main() {
 			case "Inspection Form":
 				// Map the report data to an InspectionForm struct
 				form := parsers.MapForm[models.InspectionForm](report)
+				form.PDF_Needed = false
+				form.Created_By = readerUserID
 				mu.Lock()
 				inspectionForms = append(inspectionForms, form)
 				mu.Unlock()
 			case "Dry System Form":
 				form := parsers.MapForm[models.DryForm](report)
+				form.PDF_Needed = false
+				form.Created_By = readerUserID
 				mu.Lock()
 				dryForms = append(dryForms, form)
 				mu.Unlock()
 			case "Pump Test Form":
 				form := parsers.MapForm[models.PumpForm](report)
+				form.PDF_Needed = false
+				form.Created_By = readerUserID
 				mu.Lock()
 				pumpForms = append(pumpForms, form)
 				mu.Unlock()
 			case "Backflow Form":
 				form := parsers.MapForm[models.BackflowForm](report)
 				parsers.ProcessBackflowChoices(&form)
+				form.PDF_Needed = false
+				form.Created_By = readerUserID
 				mu.Lock()
 				backflowForms = append(backflowForms, form)
 				mu.Unlock()
 			case "Backflow Form Alt":
 				form := parsers.MapForm[models.BackflowForm](report)
 				parsers.ProcessBackflowChoices(&form)
+				form.PDF_Needed = false
+				form.Created_By = readerUserID
 				mu.Lock()
 				backflowForms = append(backflowForms, form)
 				mu.Unlock()

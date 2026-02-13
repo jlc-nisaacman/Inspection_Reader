@@ -107,7 +107,7 @@ func ReadPDF(pdfPath string) (formType string, report map[string]string) {
 
 // MapForm maps a generic report map to a specific form struct using reflection.
 // It uses struct tags to match report keys with struct fields.
-// This version trims whitespace from all string values before assignment.
+// This version handles type conversion for dates, floats, ints, bools, and strings.
 //
 // Type Parameter:
 //   - T: The target struct type to map the report data to
@@ -122,6 +122,9 @@ func MapForm[T any](report map[string]string) T {
 	formValue := reflect.ValueOf(&form).Elem()
 	formType := formValue.Type()
 
+	// Get PDF path for error logging
+	pdfPath := report["pdf_path"]
+
 	// Iterate through each field in the target struct
 	for i := 0; i < formValue.NumField(); i++ {
 		field := formValue.Field(i)
@@ -134,6 +137,9 @@ func MapForm[T any](report map[string]string) T {
 		if jsonTag == "" {
 			continue // Skip fields without json tags
 		}
+
+		// Get field name for error logging
+		fieldName := formType.Field(i).Name
 
 		// Handle alternative keys specified in the json tag
 		keys := []string{}
@@ -157,9 +163,42 @@ func MapForm[T any](report map[string]string) T {
 		// Try each possible key until we find a match in the report
 		for _, key := range keys {
 			if value, exists := report[key]; exists {
-				// Trim whitespace from the value before setting it
+				// Trim whitespace from the value
 				trimmedValue := strings.TrimSpace(value)
-				field.SetString(trimmedValue)
+
+				// Set the field based on its type
+				switch field.Kind() {
+				case reflect.Ptr:
+					// Handle pointer types
+					switch field.Type().Elem().Kind() {
+					case reflect.Struct:
+						// Check if it's time.Time
+						if field.Type().Elem().Name() == "Time" {
+							parsedDate := ParseDate(trimmedValue, pdfPath, fieldName)
+							if parsedDate != nil {
+								field.Set(reflect.ValueOf(parsedDate))
+							}
+						}
+					case reflect.Float64:
+						parsedFloat := ParseFloat(trimmedValue, pdfPath, fieldName)
+						if parsedFloat != nil {
+							field.Set(reflect.ValueOf(parsedFloat))
+						}
+					case reflect.Int:
+						parsedInt := ParseInt(trimmedValue, pdfPath, fieldName)
+						if parsedInt != nil {
+							field.Set(reflect.ValueOf(parsedInt))
+						}
+					case reflect.Bool:
+						parsedBool := ParseBool(trimmedValue, pdfPath, fieldName)
+						if parsedBool != nil {
+							field.Set(reflect.ValueOf(parsedBool))
+						}
+					}
+				case reflect.String:
+					// Handle string types directly
+					field.SetString(trimmedValue)
+				}
 				break
 			}
 		}
