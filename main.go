@@ -37,13 +37,31 @@ func main() {
 	// Initialize API client
 	apiClient, err := parsers.NewAPIClient()
 	if err != nil {
-		log.Fatalf("Error initializing API client: %+v", err)
+		// Log to file
+		utils.LogSafe("ERROR: Failed to initialize API client: %+v", err)
+		// Print to console (os.Stderr)
+		os.Stderr.WriteString("\n========================================\n")
+		os.Stderr.WriteString("ERROR: API is not available or misconfigured\n")
+		os.Stderr.WriteString("Details: " + err.Error() + "\n")
+		os.Stderr.WriteString("========================================\n\n")
+		log.Fatalf("Exiting due to API initialization failure")
 	}
 
 	// Look up the user ID from the UUID via the API
 	readerUserID, err := apiClient.GetUserIDFromUUID()
 	if err != nil {
-		log.Fatalf("Failed to look up user ID from UUID: %v", err)
+		// Log to file
+		utils.LogSafe("ERROR: Failed to look up user ID from UUID: %v", err)
+		// Print to console (os.Stderr)
+		os.Stderr.WriteString("\n========================================\n")
+		os.Stderr.WriteString("ERROR: API is not available or authentication failed\n")
+		os.Stderr.WriteString("Details: " + err.Error() + "\n")
+		os.Stderr.WriteString("Please check:\n")
+		os.Stderr.WriteString("  - API_URL is correct in .env file\n")
+		os.Stderr.WriteString("  - READER_UUID is valid\n")
+		os.Stderr.WriteString("  - API server is running and accessible\n")
+		os.Stderr.WriteString("========================================\n\n")
+		log.Fatalf("Exiting due to API authentication failure")
 	}
 
 	// Create batch accumulators for each form type
@@ -59,10 +77,12 @@ func main() {
 	var wg sync.WaitGroup
 	workerPool := make(chan struct{}, 10)
 
-	// Create a progress bar to show processing status (PDF parsing + individual API uploads)
-	// Calculate total steps: PDF parsing + all form records to upload
+	// Create first progress bar for PDF reading/walking
 	fileCount := len(pdfFiles)
-	bar := pb.StartNew(fileCount) // Start with PDF count, will add API uploads dynamically
+	pdfBar := pb.New(fileCount)
+	pdfBar.SetTemplate(pb.Simple)
+	pdfBar.Set("prefix", "Reading Reports: ")
+	pdfBar.Start()
 
 	// Process each PDF file in parallel
 	for _, pdf := range pdfFiles {
@@ -77,8 +97,8 @@ func main() {
 			// Read the PDF and identify its form type
 			formType, report := parsers.ReadPDF(pdf)
 			if report == nil {
-				bar.Increment() // Update progress bar even for skipped files
-				return          // Skip if PDF couldn't be read properly
+				pdfBar.Increment() // Update progress bar even for skipped files
+				return             // Skip if PDF couldn't be read properly
 			}
 
 			// Process the PDF based on its form type and add to batch
@@ -125,50 +145,56 @@ func main() {
 				utils.LogSafe(" |%s| Skipping unknown form type.", pdf)
 			}
 
-			bar.Increment() // Update progress bar after processing each PDF
+			pdfBar.Increment() // Update progress bar after processing each PDF
 		}(pdf)
 	}
 
 	// Wait for all workers to complete
 	wg.Wait()
 
-	// Update progress bar total to include API uploads
+	// Finish the PDF reading progress bar
+	pdfBar.Finish()
+
+	// Create second progress bar for API uploads
 	totalRecords := len(inspectionForms) + len(dryForms) + len(pumpForms) + len(backflowForms)
-	bar.SetTotal(int64(fileCount + totalRecords))
+	uploadBar := pb.New(totalRecords)
+	uploadBar.SetTemplate(pb.Simple)
+	uploadBar.Set("prefix", "Uploading to API: ")
 
 	// Send all records to the API concurrently
 	utils.LogSafe("\n=== Sending records to API ===")
+	uploadBar.Start()
 
 	// Send inspections concurrently
 	if err := apiClient.SendInspectionsConcurrent(inspectionForms, func() {
-		bar.Increment()
+		uploadBar.Increment()
 	}); err != nil {
 		log.Printf("Error sending inspections: %+v", err)
 	}
 
 	// Send dry systems concurrently
 	if err := apiClient.SendDrySystemsConcurrent(dryForms, func() {
-		bar.Increment()
+		uploadBar.Increment()
 	}); err != nil {
 		log.Printf("Error sending dry systems: %+v", err)
 	}
 
 	// Send pump systems concurrently
 	if err := apiClient.SendPumpSystemsConcurrent(pumpForms, func() {
-		bar.Increment()
+		uploadBar.Increment()
 	}); err != nil {
 		log.Printf("Error sending pump systems: %+v", err)
 	}
 
 	// Send backflow concurrently
 	if err := apiClient.SendBackflowConcurrent(backflowForms, func() {
-		bar.Increment()
+		uploadBar.Increment()
 	}); err != nil {
 		log.Printf("Error sending backflow: %+v", err)
 	}
 
-	// Finish and close the progress bar
-	bar.Finish()
+	// Finish and close the upload progress bar
+	uploadBar.Finish()
 
 	utils.LogSafe("=== Processing complete ===")
 }

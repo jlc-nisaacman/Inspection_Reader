@@ -145,72 +145,72 @@ type InspectionForm struct {
 	Device_1_Address                                                          string     `json:"15a pt2"`
 	Device_1_Description_Location                                             string     `json:"15a pt3"`
 	Device_1_Operated                                                         string     `json:"15a pt4"`
-	Device_1_Delay_Sec                                                        *int       `json:"15a pt5"`
+	Device_1_Delay_Sec                                                        *float64   `json:"15a pt5"`
 	Device_2_Name                                                             string     `json:"15b pt1"`
 	Device_2_Address                                                          string     `json:"15b pt2"`
 	Device_2_Description_Location                                             string     `json:"15b pt3"`
 	Device_2_Operated                                                         string     `json:"15b pt4"`
-	Device_2_Delay_Sec                                                        *int       `json:"15b pt5"`
+	Device_2_Delay_Sec                                                        *float64   `json:"15b pt5"`
 	Device_3_Name                                                             string     `json:"15c pt1"`
 	Device_3_Address                                                          string     `json:"15c pt2"`
 	Device_3_Description_Location                                             string     `json:"15c pt3"`
 	Device_3_Operated                                                         string     `json:"15c pt4"`
-	Device_3_Delay_Sec                                                        *int       `json:"15c pt5"`
+	Device_3_Delay_Sec                                                        *float64   `json:"15c pt5"`
 	Device_4_Name                                                             string     `json:"15d pt1"`
 	Device_4_Address                                                          string     `json:"15d pt2"`
 	Device_4_Description_Location                                             string     `json:"15d pt3"`
 	Device_4_Operated                                                         string     `json:"15d pt4"`
-	Device_4_Delay_Sec                                                        *int       `json:"15d pt5"`
+	Device_4_Delay_Sec                                                        *float64   `json:"15d pt5"`
 	Device_5_Name                                                             string     `json:"15e pt1"`
 	Device_5_Address                                                          string     `json:"15e pt2"`
 	Device_5_Description_Location                                             string     `json:"15e pt3"`
 	Device_5_Operated                                                         string     `json:"15e pt4"`
-	Device_5_Delay_Sec                                                        *int       `json:"15e pt5"`
+	Device_5_Delay_Sec                                                        *float64   `json:"15e pt5"`
 	Device_6_Name                                                             string     `json:"15f pt1"`
 	Device_6_Address                                                          string     `json:"15f pt2"`
 	Device_6_Description_Location                                             string     `json:"15f pt3"`
 	Device_6_Operated                                                         string     `json:"15f pt4"`
-	Device_6_Delay_Sec                                                        *int       `json:"15f pt5"`
+	Device_6_Delay_Sec                                                        *float64   `json:"15f pt5"`
 	Device_7_Name                                                             string     `json:"15g pt1"`
 	Device_7_Address                                                          string     `json:"15g pt2"`
 	Device_7_Description_Location                                             string     `json:"15g pt3"`
 	Device_7_Operated                                                         string     `json:"15g pt4"`
-	Device_7_Delay_Sec                                                        *int       `json:"15g pt5"`
+	Device_7_Delay_Sec                                                        *float64   `json:"15g pt5"`
 	Device_8_Name                                                             string     `json:"15h pt1"`
 	Device_8_Address                                                          string     `json:"15h pt2"`
 	Device_8_Description_Location                                             string     `json:"15h pt3"`
 	Device_8_Operated                                                         string     `json:"15h pt4"`
-	Device_8_Delay_Sec                                                        *int       `json:"15h pt5"`
+	Device_8_Delay_Sec                                                        *float64   `json:"15h pt5"`
 	Device_9_Name                                                             string     `json:"15i pt1"`
 	Device_9_Address                                                          string     `json:"15i pt2"`
 	Device_9_Description_Location                                             string     `json:"15i pt3"`
 	Device_9_Operated                                                         string     `json:"15i pt4"`
-	Device_9_Delay_Sec                                                        *int       `json:"15i pt5"`
+	Device_9_Delay_Sec                                                        *float64   `json:"15i pt5"`
 	Device_10_Name                                                            string     `json:"15j pt1"`
 	Device_10_Address                                                         string     `json:"15j pt2"`
 	Device_10_Description_Location                                            string     `json:"15j pt3"`
 	Device_10_Operated                                                        string     `json:"15j pt4"`
-	Device_10_Delay_Sec                                                       *int       `json:"15j pt5"`
+	Device_10_Delay_Sec                                                       *float64   `json:"15j pt5"`
 	Device_11_Name                                                            string     `json:"15k pt1"`
 	Device_11_Address                                                         string     `json:"15k pt2"`
 	Device_11_Description_Location                                            string     `json:"15k pt3"`
 	Device_11_Operated                                                        string     `json:"15k pt4"`
-	Device_11_Delay_Sec                                                       *int       `json:"15k pt5"`
+	Device_11_Delay_Sec                                                       *float64   `json:"15k pt5"`
 	Device_12_Name                                                            string     `json:"15l pt1"`
 	Device_12_Address                                                         string     `json:"15l pt2"`
 	Device_12_Description_Location                                            string     `json:"15l pt3"`
 	Device_12_Operated                                                        string     `json:"15l pt4"`
-	Device_12_Delay_Sec                                                       *int       `json:"15l pt5"`
+	Device_12_Delay_Sec                                                       *float64   `json:"15l pt5"`
 	Device_13_Name                                                            string     `json:"15m pt1"`
 	Device_13_Address                                                         string     `json:"15m pt2"`
 	Device_13_Description_Location                                            string     `json:"15m pt3"`
 	Device_13_Operated                                                        string     `json:"15m pt4"`
-	Device_13_Delay_Sec                                                       *int       `json:"15m pt5"`
+	Device_13_Delay_Sec                                                       *float64   `json:"15m pt5"`
 	Device_14_Name                                                            string     `json:"15n pt1"`
 	Device_14_Address                                                         string     `json:"15n pt2"`
 	Device_14_Description_Location                                            string     `json:"15n pt3"`
 	Device_14_Operated                                                        string     `json:"15n pt4"`
-	Device_14_Delay_Sec                                                       *int       `json:"15n pt5"`
+	Device_14_Delay_Sec                                                       *float64   `json:"15n pt5"`
 	Adjustments_Or_Corrections_Make                                           string     `json:"16 Adjustments or Corrections"`
 	Explanation_Of_Any_No_Answers                                             string     `json:"17 Explanation of no answers"`
 	Explanation_Of_Any_No_Answers_Continued                                   string     `json:"17 Explanation of no answers continued"`
